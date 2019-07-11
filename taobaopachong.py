@@ -4,6 +4,7 @@ from bs4 import  BeautifulSoup
 
 def getHTMLText(url):
     try:
+        print('hello world')
         r=requests.get(url,timeout=30)
         r.raise_for_status()
         r.encoding=r.apparent_encoding

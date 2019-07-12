@@ -9,5 +9,6 @@ while True:
     p.send(msg.decode('utf-8'))
     if msg=='1':
         break
+print('finish')
 p.close()
 

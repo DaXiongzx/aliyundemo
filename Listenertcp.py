@@ -1,22 +1,20 @@
 import socket
-
-
-import ports
+#import ports
 import serial
-import control
+#import control
 import multiprocessing as mp
 import time
-import gps
+#import gps
 import signal
 import requests
 import json
-import sensor
+#import sensor
 import sys
-import radar
+#import radar
 import os
-import servo
+#import servo
 import sqlite3
-import database
+#import database
 '''
 # 调试的时候使用
 pprint = print
@@ -26,12 +24,12 @@ def print(*args):
 '''
 
 rtkFlag = False
-ipaddress=''
-port=None
-ip=(ipaddress,port)
+ip='47.106.148.82'
+port=8090
+addr=(ip,port)
 
 
-def exit(signum, frame):
+'''def exit(signum, frame):
     finish()
     time.sleep(0.1)
     os.system('gpio mode {} pwm'.format(control.leftEnginePort))
@@ -44,7 +42,7 @@ def exit(signum, frame):
     os.system('gpio pwmr 9600')
     os.system('gpio pwm {} {}'.format(control.rightEnginePort,round(control.staticDutyCircle * 9600 / 100)))
     print('finished')
-    sys.exit()
+    sys.exit()'''
 
 def sendSensorMessage(messages):
     url = 'http://47.100.102.135:81/api/App/SendParameter'
@@ -126,170 +124,169 @@ def doInstruction(instruction):
     global currentLeftEngineFlag
     global currentRightEngineFlag
     print('instruction:',instruction)
-    if instruction.find('?starship'):
+    if instruction.find('?starship')==0:
         if p and p.is_alive():
             p.terminate()
-        p=mp.Process(target=control.ship_control,args=(q,location,yaw,gpsYaw,speedRatio,targetIndex,kp,ki,kd))
+        p = mp.Process(target=control.ship_control, args=(
+            q, location, yaw, gpsYaw, speedRatio, targetIndex,kp,ki,kd))
         p.start()
-
-    elif instruction.find('?stopship'):
+    elif instruction.find('?stopship')==0:
         if p and p.is_alive():
             p.terminate()
         control.stop()
-        currentLeftEngineFlag=0
-        currentRightEngineFlag=0
-
-    elif instruction.find('?stopmove'):
+        currentLeftEngineFlag = 0
+        currentRightEngineFlag = 0
+    elif instruction.find('?stopmove')==0:
         if p and p.is_alive():
             p.terminate()
         control.stop()
-        currentLeftEngineFlag=0
-        currentRightEngineFlag=0
-
-    elif instruction[:9]=='?getroute':
+        currentLeftEngineFlag = 0
+        currentRightEngineFlag = 0
+    elif instruction.find('?getroute')==0:
         if len(instruction)<10:
             return
         if instruction[-1]!='?':
             return
-        route=instruction[9:-1]
-        targetIndex.value=0;
-        with open('route','w') as f:
+        route = instruction[9:-1]
+        targetIndex.value = 0
+        with open('/root/route','w') as f:
             f.write(route)
-
-    elif instruction[:9]=='?setorder':
+    elif instruction.find('?setorder')==0:
         if len(instruction)<10:
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if instruction[-1]!='?':
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
-        order=instruction[9:-1]
+        order = instruction[9:-1]
         try:
             order = int(order)
             if order>=0:
                 targetIndex.value = order
         except Exception as e:
             print('wrong instruction : {} with exception:{}'.format(instruction,e))
-    elif instruction[:9]=='?setspeed':
+    elif instruction.find('?setspeed')==0:
         if len(instruction)<10:
-            print('wrong instruction:{}.'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if instruction[-1]!='?':
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         try:
-            s=instruction[9:-1]
-            s=float(s)
+            s = instruction[9:-1]
+            s = float(s)
+            #print('s=',s)
             if s>=0 and s<=1:
-                speedRatio.value=s
+                speedRatio.value = s
                 control.leftEngineControl(currentLeftEngineFlag,s)
                 control.rightEngineControl(currentRightEngineFlag,s)
         except Exception as e:
-            print('wrong instruction:{} with exception{}'.format(instruction,e))
-    elif instruction[:9]=='?setpidcs':
+            print('wrong instruction : {} with exception:{}'.format(instruction,e))
+    elif instruction.find('?setpidcs')==0:
         if len(instruction)<10:
-            print('wrong instruction :{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if instruction[-1]!='?':
-            print('wrong instruction :{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
-        pidcs=instruction[9:-1]
-        pidcs=pidcs.split(' ')
+        pidcs = instruction[9:-1]
+        pidcs = pidcs.split(' ')
         try:
-            pidcs =[float(i) for i in pidcs]
+            pidcs = [float(i) for i in pidcs]
             assert len(pidcs)==3
-            kp.value=pidcs[0]
-            ki.value=pidcs[1]
-            kd.value=pidcs[2]
+            kp.value = pidcs[0]
+            ki.value = pidcs[1]
+            kd.value = pidcs[2]
         except Exception as e:
-            print('wrong instruction:{} with exception:{}'.format(instruction,e))
-
-    elif instruction.find('?startsensor'):
-        sensorFlag.value=1
-
-    elif instruction.find('?stopsensor'):
-        sensorFlag.value=0
-
-    elif instruction.find('?moveforw'):
+            print('wrong instruction : {} with exception:{}'.format(instruction,e))
+    elif instruction.find('?startsensor')==0:
+        sensorFlag.value = 1
+    elif instruction.find('?stopsensor')==0:
+        sensorFlag.value = 0
+    elif instruction.find('?moveforw')==0:
         if p and p.is_alive():
             p.terminate()
-        control.goforward(speedRatio.value)
-        currentLeftEngineFlag=1
-        currentRightEngineFlag=1
-
-    elif instruction.find('?moveback'):
+        control.goForward(speedRatio.value)
+        currentLeftEngineFlag = 1
+        currentRightEngineFlag = 1
+    elif instruction.find('?moveback')==0:
         if p and p.is_alive():
             p.terminate()
         control.goBackward(speedRatio.value)
-        currentRightEngineFlag=-1
-        currentLeftEngineFlag=-1
-
-    elif instruction[:9]=='?moverigh':
+        currentLeftEngineFlag = -1
+        currentRightEngineFlag = -1
+    elif instruction.find('?moverigh')==0:
         if len(instruction)<10:
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if instruction[-1]!='?':
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if p and p.is_alive():
             p.terminate()
-        percent=instruction[9:-1]
+        percent = instruction[9:-1]
         try:
-            percent=float(percent)
+            percent = float(percent)
             if percent<0 or percent>1:
                 return
             control.turnRight(percent,speedRatio.value)
-            currentLeftEngineFlag=percent
-            currentLeftEngineFlag=-percent
+            currentLeftEngineFlag = percent
+            currentRightEngineFlag = -percent
         except Exception as e:
-            print('wrong instruction :{} with exception:{}'.format(instruction,e))
-
-    elif instruction[:9]=='?moveleft':
+            print('wrong instruction : {} with exception:{}'.format(instruction,e))
+    elif instruction.find('?moveleft')==0:
         if len(instruction)<10:
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
         if instruction[-1]!='?':
-            print('wrong instruction:{}'.format(instruction))
+            print('wrong instruction : {}'.format(instruction))
             return
-        percent=instruction[9:-1]
+        if p and p.is_alive():
+            p.terminate()
+        percent = instruction[9:-1]
         try:
-            percent=float(percent)
+            percent = float(percent)
             if percent<0 or percent>1:
                 return
-            control.turnRight(percent,speedRatio.value)
-            currentLeftEngineFlag=-percent
-            currentLeftEngineFlag=percent
+            control.turnLeft(percent,speedRatio.value)
+            currentLeftEngineFlag = -percent
+            currentRightEngineFlag = percent
         except Exception as e:
-            print('wrong instruction :{} with exception:{}'.format(instruction,e))
-    elif instruction.find('?pushexo'):
+            print('wrong instruction : {} with exception:{}'.format(instruction,e))
+    elif instruction.find('?pushexo')==0:
         try:
             servo.pushExo()
         except Exception as e:
-            print('error at do pushexo instruction:',e)
-    elif instruction.find('?pullexo'):
+            print('error at do pushexo instruction :',e)
+    elif instruction.find('?pullexo')==0:
         try:
             servo.pullExo()
         except Exception as e:
-            print('error at do pullExo instruction:',e)
+            print('error at do pullexo instruction :',e)
 
 
 
 
 
-def testconnection():
-    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    s.connect(ip)
+
+
+def testconnection(s):
+    #s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    #s.connect(ip)
     if s.recv(1024):
+        doInstruction(s.recv(1024).decode('utf-8'))
         return True
     else:
         return False
 
 def main():
     tcpmessage=b''
+    connectflag=0
     ot = time.time()
-    s=socket,socket(socket.AF_INET,socket.SOCK_STREAM)
-    s.connect((ip))
-    s.send(tcpmessage)
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.connect((addr))
+    connectflag=1
+    #s.send(tcpmessage)
     while True:
         if time.time() - ot > 2:
             ot = time.time()
@@ -301,15 +298,29 @@ def main():
         Instruction=s.recv(1024)
         instruction=Instruction.decode()
         if instruction:
-            print(instruction)
-            #doInstruction(instruction)
+            #print('this is instruction:'+instruction)
+            doInstruction(instruction)
         else:
-            while not testconnection():
-                control.stop()
-                time.sleep(1)
-            continue
+            while True:
+                if(testconnection(s)):
+                    break
+                else:
+                    #control.stop()
+                    time.sleep(1)
+                    s.connect(ip)
+            #continue
 
 
+def sendlocation(location):
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    s.connect(addr)
+    while True:
+        latitude=location[0]
+        logitude=location[1]
+        latitudevalue='latitude'+latitude
+        logitudevalue='logitude'+logitude
+        s.send(latitudevalue.encode('utf-8'))
+        s.send(logitudevalue.encode('utf-8'))
 
 
 
@@ -332,27 +343,32 @@ if __name__ == '__main__':
 
     processList = [p]
 
+    '''sendlocationProcess=mp.process(target=sendlocation,args=(location,))
+    sendlocationProcess.daemon=True
+    sendlocationProcess.start()
+    processList.append(sendlocationProcess)
+
     locationProcess = mp.Process(target=gps.getLocation,
                                  args=(location, yaw, gpsYaw, speed))  # create process to get location,yaw and gpsYaw
     locationProcess.daemon = True
     locationProcess.start()
-    processList.append(locationProcess)
+    processList.append(locationProcess)'''
 
     speedRatio = mp.Value('f', 1)
     currentLeftEngineFlag = 0
     currentRightEngineFlag = 0
 
     sensorFlag = mp.Value('i', 1)  # create process to get and send water quality data fro msensors
-    sensorProcess = mp.Process(target=sensor.sendSensorData, args=(
+    '''sensorProcess = mp.Process(target=sensor.sendSensorData, args=(
     location, q, sensorFlag))  # sensorFlag 1:send water quality data 0:not send water quality data
     sensorProcess.daemon = True
     sensorProcess.start()
-    processList.append(sensorProcess)
+    processList.append(sensorProcess)'''
 
-    sendProcess = mp.Process(target=send, args=(q,))
+    '''sendProcess = mp.Process(target=send, args=(q,))
     sendProcess.daemon = True
     sendProcess.start()
-    processList.append(sendProcess)
+    processList.append(sendProcess)'''
 
     if rtkFlag:
         rtcmProcess = mp.Process(target=gps.activateRTCM, args=(q,))
@@ -362,7 +378,7 @@ if __name__ == '__main__':
 
     signal.signal(signal.SIGINT, exit)
 
-    os.system('gpio mode {} pwm'.format(control.leftEnginePort))
+    '''os.system('gpio mode {} pwm'.format(control.leftEnginePort))
     os.system('gpio pwm-ms')
     os.system('gpio pwmr 9600')
     os.system('gpio pwm {} {}'.format(control.leftEnginePort, round(control.staticDutyCircle * 9600 / 100)))
@@ -370,7 +386,7 @@ if __name__ == '__main__':
     os.system('gpio mode {} pwm'.format(control.rightEnginePort))
     os.system('gpio pwm-ms')
     os.system('gpio pwmr 9600')
-    os.system('gpio pwm {} {}'.format(control.rightEnginePort, round(control.staticDutyCircle * 9600 / 100)))
+    os.system('gpio pwm {} {}'.format(control.rightEnginePort, round(control.staticDutyCircle * 9600 / 100)))'''
 
-    conn = sqlite3.connect('logInternet.db')
+    #conn = sqlite3.connect('logInternet.db')
     main()

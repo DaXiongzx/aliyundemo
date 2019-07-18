@@ -343,7 +343,7 @@ if __name__ == '__main__':
 
     processList = [p]
 
-    '''sendlocationProcess=mp.process(target=sendlocation,args=(location,))
+    sendlocationProcess=mp.Process(target=sendlocation,args=(location,))
     sendlocationProcess.daemon=True
     sendlocationProcess.start()
     processList.append(sendlocationProcess)
@@ -352,7 +352,7 @@ if __name__ == '__main__':
                                  args=(location, yaw, gpsYaw, speed))  # create process to get location,yaw and gpsYaw
     locationProcess.daemon = True
     locationProcess.start()
-    processList.append(locationProcess)'''
+    processList.append(locationProcess)
 
     speedRatio = mp.Value('f', 1)
     currentLeftEngineFlag = 0
